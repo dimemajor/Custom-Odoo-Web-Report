@@ -1,0 +1,20 @@
+#virtual env
+new_repo
+
+#build folders and file(s)
+odoodata/__pycache__/
+build/
+dist/
+*.spec
+
+#sensitive file(s)
+constants.py
+cred.py
+session_id.txt
+
+#other file(s)
+test.py
+OM.py
+Report_old.py
+cred.py
+*.ico
