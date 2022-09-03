@@ -1,6 +1,7 @@
 import datetime as dt
 import os
 
+import pandas as pd
 import glob
 import docx
 from docx2pdf import convert
@@ -12,6 +13,7 @@ from docx.shared import Inches
 
 from constants import *
 import odoodata.odoodata as od
+from utils import *
 
 
 class Doc():
@@ -70,49 +72,35 @@ class Doc():
         images = []
         pro_categ = []
         cost = []
-        headings = ['Product', 'Qty', 'Unit Price', 'Total Price']
+        ordered_list = ['Product', 'Qty', 'Unit Price', 'Total Price']
 
         response = self.comp.getVariantsSales()
-        for record in response.json()['result']:
-            for field, value in record.items():
-                if field == 'product_id':
-                    if ' ' in value[1]:
-                        pro_split = value[1].split(' ')
-                        if '[' not in pro_split[0]:
-                            product.append(pro_split[0])
-                            try:
-                                images.append(pro_split[0]+' '+pro_split[1].title())
-                                temp_dict[headings[0]] = pro_split[0]+' '+pro_split[1]
-                            except:
-                                images.append(pro_split[0])
-                                temp_dict[headings[0]] = pro_split[0]
-                        else:
-                            product.append(pro_split[1])
-                            try:
-                                images.append(pro_split[1]+' '+pro_split[2].title())
-                                temp_dict[headings[0]] = pro_split[1]+' '+pro_split[2]
-                            except:
-                                images.append(pro_split[1])
-                                temp_dict[headings[0]] = pro_split[1]
-                    else:
-                        product.append(value[1])
-                        images.append(value[1])
-                        temp_dict[headings[0]] = value[1]
-                elif field == 'product_qty':
-                    temp_dict[headings[1]] = f'{value:,.2f}'
-                elif field == 'average_price':
-                    temp_dict[headings[2]] = f'{value:,.2f}'
-                elif field == 'price_total':
-                    cost.append(value)
-                    temp_dict[headings[3]] = f'{value:,.2f}'
-                elif field == 'product_categ_id':
-                    pro_categ.append(value[1])
-                    break
-                else:
-                    continue
-            
-            temp_dict = {key: temp_dict[key] for key in headings}
-            variants_dict.append(temp_dict.copy())
+        v_df = pd.DataFrame(response.json()['result'])
+        to_keep = ['product_id', 'product_qty', 'average_price', 'price_total', 'product_categ_id']
+        v_df = rm_headers(v_df, to_keep)
+        v_df['product_categ_id'] = v_df['product_categ_id'].apply(replace)
+        v_df['product_id'] = v_df['product_id'].apply(replace)
+        v_df['product_id'] = v_df['product_id'].apply(rm_other_fields)
+        v_df[['images', 'colour']] = v_df['product_id'].str.split(' ', expand=True)
+        product = v_df['product_id'].to_list()
+        pro_categ = v_df['product_categ_id'].to_list()
+        images = v_df['images'].to_list()
+
+        response = self.comp.getVariants()
+        df = pd.DataFrame(response.json()['result']['records'])
+        to_keep = ['categ_id', 'uom_id']
+        df = rm_headers(df, to_keep)
+        df['categ_id'] = df['categ_id'].apply(replace)
+        df['uom_id'] = df['uom_id'].apply(replace)
+        df = df.drop_duplicates(subset = "categ_id")
+        df.rename(columns= {'categ_id': 'product_categ_id', 'uom_id': 'uom'}, inplace=True)
+        df = pd.merge(v_df, df, on=['product_categ_id'], how='inner')
+        df['product_qty'] = df['product_qty'].astype(float)
+        df['product_qty'] = df.apply(pd_apply_conversion, axis=1)
+        df.drop(['product_categ_id', 'uom', 'colour', 'images'], inplace=True, axis=1)
+        df.rename(columns= {'product_qty': 'Qty', 'average_price': 'Unit Price', 'price_total': 'Total Price', 'product_id': 'Product'}, inplace=True)
+        df = df[ordered_list]
+        variants_dict = df.to_dict('records')
         return variants_dict, product, images, pro_categ, cost
 
     def formatPayment(self, method):
@@ -167,16 +155,13 @@ class Doc():
                     bal = 0
                 if temp_dict['Customer'] != 'General':
                     if pay >= 0:
-                        temp_dict['in'] = pay
+                        temp_dict['Out'] = pay
                         dep_increase.append(pay)
-                        temp_dict['out'] = ''
-                        #temp_dict['balance'] = bal + pay  
+                        temp_dict['In'] = ''
                     else:
-                        temp_dict['in'] = ''
-                        temp_dict['out'] = abs(pay)
+                        temp_dict['Out'] = ''
+                        temp_dict['In'] = abs(pay)
                         dep_decrease.append(abs(pay))
-                        #temp_dict['balance'] = bal - abs(pay)
-                    #bal = temp_dict['balance']
                     payment_dict.append(temp_dict)
                     j+=1
             else:

@@ -63,53 +63,46 @@ def program(start_cal, start_hr_entry, start_min_entry, start_sec_entry,
     end = dt.datetime(temp_end[0],temp_end[1],temp_end[2],end_hr,end_min)
     
     report_name = f'{start:%d %b %y} - {end:%d %b %y}'
-    try:
-        doc = rp.Doc(start_date=start_date, end_date=end_date, start_time=start_time, end_time=end_time)
-        variants_dict, product, images, pro_categ, cost = doc.formatVariants()
-        payment_dict, totals, dep_increase, dep_decrease = doc.formatPayment('custom')
+    #try:
+    doc = rp.Doc(start_date=start_date, end_date=end_date, start_time=start_time, end_time=end_time)
+    variants_dict, product, images, pro_categ, cost = doc.formatVariants()
+    payment_dict, totals, dep_increase, dep_decrease = doc.formatPayment('custom')
 
-        pay_dict = [
-            {
-                'Name':'Cash',
-                'Total':totals[0],
-            },
-            {
-                'Name':'Transfer',
-                'Total':totals[1],
-            },
-            {
-                'Name':'POS',
-                'Total':totals[2],
-            },
-            {
-                'Name':'Total',
-                'Total':totals[0] + totals[1] + totals[2]
-            }
-        ]
-        total_dep_dict = {
-            'Date' : 'Total',
-            'Customer' : '',
-            'in': sum(dep_increase),
-            'out': sum(dep_decrease),
+    pay_dict = [
+        {
+            'Name':'Cash',
+            'Total':totals[0],
+        },
+        {
+            'Name':'Transfer',
+            'Total':totals[1],
+        },
+        {
+            'Name':'POS',
+            'Total':totals[2],
+        },
+        {
+            'Name':'Total',
+            'Total':totals[0] + totals[1] + totals[2]
         }
-        total_vdict = {
-            'Product':'Total',
-            'Qty':'',
-            'Unit Price':'',
-            'Total Price':sum(cost),
-        }
+    ]
+    total_dep_dict = {
+        'Date' : 'Total',
+        'Customer' : '',
+        'in': sum(dep_increase),
+        'out': sum(dep_decrease),
+    }
 
-        payment_dict.append(total_dep_dict)
-        variants_dict.append(total_vdict)
-        t_title = ['Products', 'Customer Deposits', 'Payments']
-        add_pic = [True, False, False]
+    payment_dict.append(total_dep_dict)
+    t_title = ['Products', 'Customer Deposits', 'Payments']
+    add_pic = [True, False, False]
 
-        doc.createDoc(add_pic, variants_dict, payment_dict, pay_dict, t_title=t_title, product=product, images=images, pro_categ=pro_categ)
-        doc.createPath(report_name)
-    except KeyError:
-        messagebox.showinfo("No results for the selected period", e)
-    except Exception as e:
-        messagebox.showinfo("Error", e)
+    doc.createDoc(add_pic, variants_dict, payment_dict, pay_dict, t_title=t_title, product=product, images=images, pro_categ=pro_categ)
+    doc.createPath(report_name)
+    #except KeyError as e:
+        #messagebox.showinfo("No results for the selected period", e)
+    #except Exception as e:
+        #messagebox.showinfo("Error", e)
     return
 
 def main():
