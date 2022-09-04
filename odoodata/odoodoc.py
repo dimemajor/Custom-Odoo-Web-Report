@@ -100,6 +100,7 @@ class Doc():
         df.drop(['product_categ_id', 'uom', 'colour', 'images'], inplace=True, axis=1)
         df.rename(columns= {'product_qty': 'Qty', 'average_price': 'Unit Price', 'price_total': 'Total Price', 'product_id': 'Product'}, inplace=True)
         df = df[ordered_list]
+        df.sort_values(by=['Product'], inplace=True)
         variants_dict = df.to_dict('records')
         return variants_dict, product, images, pro_categ, cost
 
@@ -220,11 +221,29 @@ class Doc():
             r.font.size = Pt(7)
             return hyperlink
 
-        def find_image(img, img_v, category, path):
-            image = glob.glob(f'{path}{category}/{img_v}*')
-            if len(image)==0:
-                image = glob.glob(f'{path}{category}/{img}*')
-            return image[0]
+        def find_image(img, img_v, category):
+            images = glob.glob(f'{self.path_to_catalog}{category}/{img_v}*')
+            if len(images)==0:
+                images = glob.glob(f'{self.path_to_catalog}{category}/{img}*')
+            if len(images)==0:
+                images = glob.glob(f'{self.path_to_catalog}**/{img}*', recursive=True) #check all the folders for any matching file that bears the name of the product. Including all variants.
+                if len(images) > 0:
+                    img_path = None
+                    for im in images:
+                        file_path, file_ext = os.path.splitext(im)
+                        file_name = file_path.split('\\')
+                        try:
+                            os.rename(im, f'{self.path_to_catalog}{category}/{file_name[len(file_name)-1]}{file_ext}') # move all the found files to their appropriate folers
+                        except: # if the file cannot be moved for some reason, quickly check if this is the image we're looking for and set the return value before moving on.
+                            if img_v in file_ext:
+                                img_path = im
+                    if not img_path: # if img_path was not set during the loop, check the appropriate folders again for the variants and the product respectively
+                        images = glob.glob(f'{self.path_to_catalog}{category}/{img_v}*')
+                        if len(images) == 0:
+                            images = glob.glob(f'{self.path_to_catalog}{category}/{img}*')
+                    else:
+                        return img_path
+            return images[0]
 
         if len(args) != len(t_title):
             raise ValueError('Length of table and table title must match')
@@ -270,7 +289,7 @@ class Doc():
                         paragraph = cell.paragraphs[0]
                         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
                         run = paragraph.add_run()
-                        img_path = find_image(product[i-1], images[i-1], pro_categ[i-1], self.path_to_catalog)
+                        img_path = find_image(images[i-1], product[i-1], pro_categ[i-1])
                         run.add_picture(img_path, width = Inches(.7), height = Inches(.8))
                         run.add_break(WD_BREAK.LINE)
                         hyp = get_image_hyperlink(img_path)
