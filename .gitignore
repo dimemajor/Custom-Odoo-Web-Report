@@ -2,7 +2,7 @@
 new_repo
 
 #build folders and file(s)
-odoodata/__pycache__/
+__pycache__/
 build/
 dist/
 *.spec
