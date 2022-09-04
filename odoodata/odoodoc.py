@@ -28,10 +28,10 @@ class Doc():
             cwd = cwd.split('\\')
         if ':' in cwd[0]:
             self.path = f'{cwd[0]}/Users/{cwd[2]}/Documents/'
-            self.path_to_catalog = f'{cwd[0]}/Users/{cwd[2]}/Documents/MARMOR CATALOG/'
+            self.path_to_catalog = f'{cwd[0]}/Users/{cwd[2]}/Documents/{CATALOG_FOLDER}/'
         else:
             self.path = f'{cwd[0]}/Users/{cwd[2]}/Documents/'
-            self.path_to_catalog = f'Users/{cwd[0]}/Documents/MARMOR CATALOG/'
+            self.path_to_catalog = f'Users/{cwd[0]}/Documents/{CATALOG_FOLDER}/'
 
         self.comp = od.getData(PASSWORD, EMAIL, DOMAIN, start_date, end_date, start_time, end_time)
         self.h_font = h_font
@@ -299,7 +299,7 @@ class Doc():
                         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
                         file_path, file_ext = os.path.splitext(img_path)
-                        mac_image = f'file:///Users/morufat/Documents/MARMOR CATALOG/{pro_categ[i-1]}/{product[i-1]}{file_ext}'
+                        mac_image = f'file:///Users/morufat/Documents/{CATALOG_FOLDER}/{pro_categ[i-1]}/{product[i-1]}{file_ext}'
                         add_hyperlink(paragraph, ' photo', mac_image)
                     except:
                         t.cell(i,len(table[0].keys())).text = 'no image'
