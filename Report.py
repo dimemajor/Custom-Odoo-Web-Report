@@ -96,14 +96,50 @@ def program(start_cal, start_hr_entry, start_min_entry, start_sec_entry,
         payment_dict.append(total_dep_dict)
         t_title = ['Products', 'Customer Deposits', 'Payments']
         add_pic = [True, False, False]
-
-        doc.createDoc(add_pic, variants_dict, payment_dict, pay_dict, t_title=t_title, product=product, images=images, pro_categ=pro_categ)
+        dicts = [variants_dict, payment_dict, pay_dict]
+        doc.createDoc(add_pic, dicts, t_title=t_title, product=product, images=images, pro_categ=pro_categ)
         doc.createPath(report_name)
     except KeyError as e:
         messagebox.showinfo("No results for the selected period", e)
     except Exception as e:
         messagebox.showinfo("Error", e)
     return
+
+def select_all(lb, list):
+    if len(lb.curselection()) == len(list):
+        lb.selection_clear(0, tk.END)
+    elif len(lb.curselection()) > 1:
+        lb.select_set(0, tk.END)
+    else:
+        lb.select_set(0, tk.END)
+
+def get_quants(lb):
+    titles=[]
+    categs=[]
+    add_pic=[]
+    dicts=[]
+    for i in lb.curselection():
+        categs.append(lb.get(i))
+    invt_list = rp.Doc()
+    shop_list, title, pic = invt_list.getUpdatedQuant(location='shop', categs=categs)
+    dicts.extend(shop_list)
+    titles.extend(title)
+    add_pic.extend(pic)
+    wh_list, title, pic = invt_list.getUpdatedQuant(location='warehouse', categs=categs)
+    dicts.extend(wh_list)
+    titles.extend(title)
+    add_pic.extend(pic)
+
+    if shop_list is not None and wh_list is not None:
+        invt_list.createDoc(add_pic, dicts, t_title=titles)
+    elif wh_list is not None:
+        invt_list.createDoc(add_pic, wh_list, t_title=titles)
+    elif shop_list is not None:
+        invt_list.createDoc(add_pic, shop_list, t_title=titles)
+    else:
+        messagebox.showinfo('Info', 'No results to display')
+    
+    invt_list.createPath(report_name = f'Inventory List')
 
 def main():
     ctypes.windll.shcore.SetProcessDpiAwareness(1)
@@ -115,9 +151,8 @@ def main():
         pass
 
     root.title('Sales Report')
-
     w = 600
-    h = 150
+    h = 180
 
     ws = root.winfo_screenwidth()
     hs = root.winfo_screenheight()
@@ -126,26 +161,44 @@ def main():
     y = ((hs/2) - (h/2))
 
     root.geometry('%dx%d+%d+%d' % (w, h, x, y))
-    root.columnconfigure(1, weight=1)
+
+    notebook = ttk.Notebook(root, style='Custom.TNotebook', width=w, height=h)
+    notebook.pack()
+
+    repo_frame = ttk.Frame(notebook, width=w, height=h)
+    invt_frame = ttk.Frame(notebook, width=w, height=h)
+    repo_frame.pack(fill='both', expand=True)
+    invt_frame.pack(fill='both', expand=True)
+    repo_frame.columnconfigure(1, weight=1)
+    invt_frame.columnconfigure(1, weight=1)
+
+    notebook.add(repo_frame, text='Sales Report')
+    notebook.add(invt_frame, text='Inventory')
 
     start_yr, start_month, start_day, start_hour, start_min, start_sec, end_yr, end_month, end_day, end_hour, end_min, end_sec = rp.get_time()
 
-    start_v = View(root, start_yr, start_month, start_day)
-    end_v = View(root, end_yr, end_month, end_day)
+    start_v = View(repo_frame, start_yr, start_month, start_day)
+    end_v = View(repo_frame, end_yr, end_month, end_day)
 
-    start_cal = start_v.date_range('From: ', 0, 0, 0, 1, 7)
-    end_cal = end_v.date_range('to: ', 1, 0, 1, 1, 3)
+    start_cal = start_v.date_range('From: ', label_row=0, label_column=0, entry_row=0, entry_column=1, pady=7)
+    end_cal = end_v.date_range('to: ', label_row=1, label_column=0, entry_row=1, entry_column=1, pady=3)
 
-    start_hr_entry = start_v.time_range(start_hour, 0, 23, 4, 0)
-    start_min_entry = start_v.time_range(start_min, 0, 60, 5, 0)
-    start_sec_entry = start_v.time_range(start_sec, 0, 60, 6, 0)
+    start_hr_entry = start_v.time_range(start_hour, from_=0, to=23, col=4, row=0)
+    start_min_entry = start_v.time_range(start_min, from_=0, to=60, col=5, row=0)
+    start_sec_entry = start_v.time_range(start_sec, from_=0, to=60, col=6, row=0)
 
-    end_hr_entry = end_v.time_range(end_hour, 0, 23, 4, 1)
-    end_min_entry = end_v.time_range(end_min, 0, 60, 5, 1)
-    end_sec_entry = end_v.time_range(end_sec, 0, 60, 6, 1)
+    end_hr_entry = end_v.time_range(end_hour, from_=0, to=23, col=4, row=1)
+    end_min_entry = end_v.time_range(end_min, from_=0, to=60, col=5, row=1)
+    end_sec_entry = end_v.time_range(end_sec, from_=0, to=60, col=6, row=1)
 
-    ttk.Button(root, text="Print", command=lambda: program(start_cal, start_hr_entry, start_min_entry, start_sec_entry, end_cal, end_hr_entry, end_min_entry, end_sec_entry), style='print.TButton').grid(column=5, row=6, padx=10, columnspan=3)
+    ttk.Button(repo_frame, text="Print", command=lambda: program(start_cal, start_hr_entry, start_min_entry, start_sec_entry, end_cal, end_hr_entry, end_min_entry, end_sec_entry), style='print.TButton').grid(column=5, row=6, padx=10, columnspan=3)
 
+    items = ['NET LACE', 'SEQUENCE LACE', 'BRIDAL LACE']
+    categs = tk.Variable(value=items)
+    categ_listbox = tk.Listbox(invt_frame, listvariable=categs, height=4, width=100, selectmode=tk.MULTIPLE)
+    categ_listbox.grid(row=0, column=0, rowspan=4, columnspan=4)
+    tk.Button(invt_frame, text='All/None', command=lambda: select_all(categ_listbox, items)).grid(row=8, column=0)
+    tk.Button(invt_frame, text='Print', command=lambda: get_quants(categ_listbox)).grid(row=9, column=6)
     root.mainloop()
     return root, start_cal, start_hr_entry, start_min_entry, start_sec_entry, end_cal, end_hr_entry, end_min_entry, end_sec_entry
 

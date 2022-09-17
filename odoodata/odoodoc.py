@@ -169,6 +169,92 @@ class Doc():
                 raise ValueError('try "default" or "custom"') 
         return payment_dict, totals, dep_increase, dep_decrease
 
+    def variants_expanded(self):
+        response = self.comp.getVariants()
+        tem_df = pd.DataFrame(response.json()['result']['records'])
+        to_keep = ['categ_id', 'name', 'uom_id', 'product_template_variant_value_ids']
+        tem_df = rm_headers(df=tem_df, to_keep=to_keep)
+        tem_df['categ_id'] = tem_df['categ_id'].apply(replace)
+        tem_df['uom_id'] = tem_df['uom_id'].apply(replace)
+        tem_df['product_template_variant_value_ids'] = tem_df['product_template_variant_value_ids'].apply((lambda x: replace(cell=x, index=0)))
+        template_ids = tem_df['product_template_variant_value_ids'].to_list()
+        template_ids = [x for x in template_ids if str(x) != 'nan']
+        
+        response = self.comp.attachVariants(template_ids)
+        col_df = pd.DataFrame(response.json()['result'])
+        col_df['display_name'] = col_df['display_name'].apply(lambda x: x.replace('COLOUR: ', ''))
+        col_df.rename(columns={'id': 'product_template_variant_value_ids'}, inplace=True)
+        df = pd.merge(tem_df, col_df, on=['product_template_variant_value_ids'], how='left')
+        df['display_name'].fillna('', inplace=True)
+        df['name'] = df['name'] + ' ' + '(' + df['display_name'] + ')'
+        df['name'] = df['name'].apply(lambda x: str(x).replace(" ()", ""))
+        df.rename(columns={'name': 'product', 'categ_id': 'Category', 'uom_id': 'uom'}, inplace=True)
+        to_keep = ['product', 'Category', 'uom']
+        df = rm_headers(df=df, to_keep=to_keep)
+
+        return df
+
+    def getUpdatedQuant(self, location, categs=None):
+        def create_final_df(q_df):
+            q_df.rename(columns= {'quantity': 'product_qty', 'Category_x': 'product_categ_id', 'product': 'Product', 'uom_x': 'uom'}, inplace=True)   
+            q_df['Quantity'] = q_df.apply(pd_apply_conversion, axis=1)
+            q_df.sort_values(by=['Product'], inplace = True)
+            q_df.rename(columns= {'product_categ_id': 'Category'}, inplace=True)   
+            to_keep = ['Product', 'Category', 'Quantity']
+            q_df = rm_headers(df=q_df, to_keep=to_keep)
+            return q_df
+
+        titles=[]
+        dicts=[]
+        add_pic=[]
+        var_df = self.variants_expanded()
+
+        response = self.comp.getQuants()
+        quant_df = pd.DataFrame(response.json()['result']['records'])
+        quant_df['product_id'] = quant_df['product_id'].apply(replace)
+        quant_df['product_categ_id'] = quant_df['product_categ_id'].apply(replace)
+        quant_df['location_id'] = quant_df['location_id'].apply(replace)
+        quant_df['product_uom_id'] = quant_df['product_uom_id'].apply(replace)
+        to_keep = ['product_id', 'product_categ_id', 'location_id', 'product_uom_id', 'quantity']
+        quant_df = rm_headers(df=quant_df, to_keep=to_keep)
+        quant_df.rename(columns={'product_id': 'product', 'product_categ_id': 'Category', 'location_id': 'location', 'product_uom_id': 'uom'}, inplace=True)
+
+        if categs != None:
+            temp_variants_df = var_df.loc[(var_df['Category'].isin(categs))]
+            temp_quant_df = quant_df.loc[(quant_df['Category'].isin(categs))]
+            temp_quant_df.to_excel('temp_qa.xlsx')
+            temp_variants_df.to_excel('temp_v.xlsx')
+        else:
+            temp_quant_df = quant_df
+            temp_variants_df = var_df
+
+        if location == 'shop':
+            temp_quant_df = temp_quant_df.loc[temp_quant_df['location']=='SP/Stock']
+            temp_quant_df = pd.merge(temp_variants_df, temp_quant_df, on=['product'], how='left')
+            temp_quant_df['quantity'] = temp_quant_df['quantity'].fillna(0)
+            temp_quant_df.to_excel('temp_q.xlsx')
+            if temp_quant_df.shape[0] == 0:
+                return None
+            else:
+                q_df = create_final_df(q_df=temp_quant_df)
+        elif location == 'warehouse':
+            temp_quant_df = temp_quant_df.loc[temp_quant_df['location']=='WH/Stock']
+            temp_quant_df = pd.merge(temp_variants_df, temp_quant_df, on=['product'], how='inner')
+            if temp_quant_df.shape[0] == 0:
+                return None
+            else:
+                q_df = create_final_df(q_df=temp_quant_df)
+        categ_set = set(q_df['Category'].to_list())
+        for categ in categs:
+            if categ in categ_set:
+                temp_q_df = q_df.loc[q_df['Category']==categ]
+                temp_q_df.drop(columns=['Category'], axis=1, inplace=True)
+                dicts.append(temp_q_df.to_dict('records'))
+                titles.append(f'{categ.title()}-{location.title()}')
+                add_pic.append(False)
+            
+        return dicts, titles, add_pic
+
     def docHeader():
         def decorator(func):
             def wrapper(self, add_pic, *args, **kwargs):
@@ -191,7 +277,7 @@ class Doc():
         return decorator
 
     @docHeader()
-    def createDoc(self, add_pic, *args, t_title=[], product=[], images=[],
+    def createDoc(self, add_pic, dicts, t_title=[], product=[], images=[],
         pro_categ=[], t_style='Table Grid', f_name='Alef',
         ):
 
@@ -245,13 +331,13 @@ class Doc():
                         return img_path
             return images[0]
 
-        if len(args) != len(t_title):
+        if len(dicts) != len(t_title):
             raise ValueError('Length of table and table title must match')
-        if len(args) != len(add_pic):
+        if len(dicts) != len(add_pic):
             raise ValueError('Length of bool list must match table length')
 
-        for n, table in enumerate(args):
-            self.doc.add_heading(t_title[n], 1)
+        for n, table in enumerate(dicts):
+            self.doc.add_heading(t_title[n], 2)
             if add_pic[n] == True:
                 if len(product) > len(table):
                     raise ValueError('Length of table must be >= product length')
@@ -336,7 +422,6 @@ class Doc():
             new_month_dir = rf'{self.path}/{FOLDER_NAME}/{self.start:%b %y}'
         except:
             new_month_dir = rf'{self.path}/{FOLDER_NAME}/{self.date:%b %y}'
-        #print(new_month_dir)
         if not os.path.exists(pro_dir):
             os.mkdir(pro_dir)
         if not os.path.exists(new_month_dir):

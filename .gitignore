@@ -11,6 +11,7 @@ dist/
 constants.py
 cred.py
 session_id.txt
+credentials.json
 
 #other file(s)
 test.py
@@ -18,3 +19,4 @@ OM.py
 Report_old.py
 cred.py
 *.ico
+Catalog_book.py
