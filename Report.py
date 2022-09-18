@@ -11,7 +11,7 @@ import odoodata.odoodoc as rp
 
 
 class View():
-    def __init__(self, window, yr, month, day, 
+    def __init__(self, window, yr=None, month=None, day=None, 
                 font='Constantia', f_size=12,
                 ):
         self.yr = yr
@@ -21,6 +21,8 @@ class View():
         self.f_size = f_size   
         self.font = (font, f_size)
         self.window = window
+        self.style = ttk.Style().configure('small.TButton', font=self.font)
+
     
     def date_range(self, text, label_row, label_column, entry_row, entry_column, pady):
         cal_label = tk.Label(self.window, text=text, font=self.font)
@@ -36,9 +38,13 @@ class View():
         hr_entry.grid(column=col, row=row,pady=7, sticky='e',columnspan=1)
         return hr_entry
 
-def program(start_cal, start_hr_entry, start_min_entry, start_sec_entry,
-            end_cal, end_hr_entry, end_min_entry, end_sec_entry):
-            
+    def add_button(self, func, row, col, colspan=1, padx=5, pady=5, text='Print'):
+        ttk.Button(self.window, text=text, command=func, style=self.style).grid(row=row, column=col, columnspan=colspan, padx=padx, pady=pady)
+        return
+        
+
+def sales_report(start_cal, start_hr_entry, start_min_entry, start_sec_entry,
+                end_cal, end_hr_entry, end_min_entry, end_sec_entry):
     start_date = str(start_cal.get_date())
     end_date = str(end_cal.get_date())
 
@@ -151,8 +157,8 @@ def main():
         pass
 
     root.title('Sales Report')
-    w = 600
-    h = 180
+    w = 650
+    h = 185
 
     ws = root.winfo_screenwidth()
     hs = root.winfo_screenheight()
@@ -162,7 +168,7 @@ def main():
 
     root.geometry('%dx%d+%d+%d' % (w, h, x, y))
 
-    notebook = ttk.Notebook(root, style='Custom.TNotebook', width=w, height=h)
+    notebook = ttk.Notebook(root, width=w, height=h)
     notebook.pack()
 
     repo_frame = ttk.Frame(notebook, width=w, height=h)
@@ -191,14 +197,20 @@ def main():
     end_min_entry = end_v.time_range(end_min, from_=0, to=60, col=5, row=1)
     end_sec_entry = end_v.time_range(end_sec, from_=0, to=60, col=6, row=1)
 
-    ttk.Button(repo_frame, text="Print", command=lambda: program(start_cal, start_hr_entry, start_min_entry, start_sec_entry, end_cal, end_hr_entry, end_min_entry, end_sec_entry), style='print.TButton').grid(column=5, row=6, padx=10, columnspan=3)
+    #ttk.Button(repo_frame, text="Print", command=lambda: program(start_cal, start_hr_entry, start_min_entry, start_sec_entry, end_cal, end_hr_entry, end_min_entry, end_sec_entry), style='small.TButton').grid(column=5, row=6, padx=10, columnspan=3)
+    
+    sales_buttn = View(repo_frame, f_size=9)
+    sales_buttn.add_button(func=lambda: sales_report(start_cal, start_hr_entry, start_min_entry, start_sec_entry, end_cal, end_hr_entry, end_min_entry, end_sec_entry), row=6, col=5, colspan=3, padx=10)
 
     items = ['NET LACE', 'SEQUENCE LACE', 'BRIDAL LACE']
     categs = tk.Variable(value=items)
-    categ_listbox = tk.Listbox(invt_frame, listvariable=categs, height=4, width=100, selectmode=tk.MULTIPLE)
-    categ_listbox.grid(row=0, column=0, rowspan=4, columnspan=4)
-    tk.Button(invt_frame, text='All/None', command=lambda: select_all(categ_listbox, items)).grid(row=8, column=0)
-    tk.Button(invt_frame, text='Print', command=lambda: get_quants(categ_listbox)).grid(row=9, column=6)
+    categ_listbox = tk.Listbox(invt_frame, listvariable=categs, height=4, width=80, selectmode=tk.MULTIPLE, font=('Constantia', 9))
+    categ_listbox.grid(row=0, column=0, rowspan=4, columnspan=4, padx=5, pady=5)
+
+    invt_buttn = View(invt_frame, f_size=9)
+    invt_buttn.add_button(func=lambda: select_all(categ_listbox, items), text='All/None', row=7, col=0, padx=10)
+    invt_buttn.add_button(func=lambda: get_quants(categ_listbox), text= 'Print', row=7, col=2, padx=10)
+
     root.mainloop()
     return root, start_cal, start_hr_entry, start_min_entry, start_sec_entry, end_cal, end_hr_entry, end_min_entry, end_sec_entry
 

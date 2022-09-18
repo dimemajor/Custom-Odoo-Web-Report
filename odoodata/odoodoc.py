@@ -222,8 +222,6 @@ class Doc():
         if categs != None:
             temp_variants_df = var_df.loc[(var_df['Category'].isin(categs))]
             temp_quant_df = quant_df.loc[(quant_df['Category'].isin(categs))]
-            temp_quant_df.to_excel('temp_qa.xlsx')
-            temp_variants_df.to_excel('temp_v.xlsx')
         else:
             temp_quant_df = quant_df
             temp_variants_df = var_df
@@ -232,7 +230,6 @@ class Doc():
             temp_quant_df = temp_quant_df.loc[temp_quant_df['location']=='SP/Stock']
             temp_quant_df = pd.merge(temp_variants_df, temp_quant_df, on=['product'], how='left')
             temp_quant_df['quantity'] = temp_quant_df['quantity'].fillna(0)
-            temp_quant_df.to_excel('temp_q.xlsx')
             if temp_quant_df.shape[0] == 0:
                 return None
             else:
@@ -368,8 +365,8 @@ class Doc():
                     j+=1
                 i+=1
             i=1
-            for record in range(len(images)):
-                if add_pic[n] == True:
+            if add_pic[n] == True:
+                for record in range(len(images)):
                     try:
                         cell = t.cell(i,len(table[0].keys()))
                         paragraph = cell.paragraphs[0]
@@ -389,7 +386,7 @@ class Doc():
                         add_hyperlink(paragraph, ' photo', mac_image)
                     except:
                         t.cell(i,len(table[0].keys())).text = 'no image'
-                i+=1
+                    i+=1
         
     def createPath(self, report_name):
         def create_file(new_month_dir):
