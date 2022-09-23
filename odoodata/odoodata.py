@@ -186,7 +186,7 @@ class Session():
         }
         response = requests.post(self.colorUrl, cookies=self.cookies, headers=self.headers, json=json_data)
         return response
-                
+         
     def getSessionId(self):
         with requests.Session() as s:
             r = s.get(self.baseUrl)

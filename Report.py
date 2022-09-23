@@ -7,9 +7,11 @@ from ttkthemes import ThemedTk
 from tkinter import messagebox
 import datetime as dt
 import sys
+from constants import DOMAIN, EMAIL, PASSWORD
 
 import odoodata.odoodoc as rp
-
+import odoodata.transform as tf
+import odoodata.odoodata as od
 
 class View():
     def __init__(self, window, yr=None, month=None, day=None, 
@@ -45,7 +47,7 @@ class View():
 
 
 def sales_report(start_cal, start_hr_entry, start_min_entry, start_sec_entry,
-                end_cal, end_hr_entry, end_min_entry, end_sec_entry):
+                end_cal, end_hr_entry, end_min_entry, end_sec_entry, comp):
     start_date = str(start_cal.get_date())
     end_date = str(end_cal.get_date())
 
@@ -69,47 +71,47 @@ def sales_report(start_cal, start_hr_entry, start_min_entry, start_sec_entry,
     start = dt.datetime(temp_start[0],temp_start[1],temp_start[2],start_hr,start_min)
     end = dt.datetime(temp_end[0],temp_end[1],temp_end[2],end_hr,end_min)
     
+    comp = od.getData(PASSWORD, EMAIL, DOMAIN, start_date, end_date, start_time, end_time)
     report_name = f'{start:%d %b %y} - {end:%d %b %y}'
-    try:
-        doc = rp.Doc(start_date=start_date, end_date=end_date, start_time=start_time, end_time=end_time)
-        variants_dict, product, images, pro_categ, cost = doc.formatVariants()
-        payment_dict, totals, dep_increase, dep_decrease = doc.formatPayment('custom')
+    #try:
+    doc = rp.Doc(start_date=start_date, end_date=end_date, start_time=start_time, end_time=end_time)
+    variants_dict, product, images, pro_categ, cost = tf.formatVariants(comp)
+    payment_dict, totals, dep_increase, dep_decrease = tf.formatPayment(comp, 'custom')
 
-        pay_dict = [
-            {
-                'Name':'Cash',
-                'Total':totals[0],
-            },
-            {
-                'Name':'Transfer',
-                'Total':totals[1],
-            },
-            {
-                'Name':'POS',
-                'Total':totals[2],
-            },
-            {
-                'Name':'Total',
-                'Total':totals[0] + totals[1] + totals[2]
-            }
-        ]
-        total_dep_dict = {
-            'Date' : 'Total',
-            'Customer' : '',
-            'in': sum(dep_increase),
-            'out': sum(dep_decrease),
+    pay_dict = [
+        {
+            'Name':'Cash',
+            'Total':totals[0],
+        },
+        {
+            'Name':'Transfer',
+            'Total':totals[1],
+        },
+        {
+            'Name':'POS',
+            'Total':totals[2],
+        },
+        {
+            'Name':'TOTAL',
+            'Total':totals[0] + totals[1] + totals[2]
         }
+    ]
+    total_dep_dict = {
+        'Customer' : 'TOTAL',
+        'in': sum(dep_increase),
+        'out': sum(dep_decrease),
+    }
 
-        payment_dict.append(total_dep_dict)
-        t_title = ['Products', 'Customer Deposits', 'Payments']
-        add_pic = [True, False, False]
-        dicts = [variants_dict, payment_dict, pay_dict]
-        doc.createDoc(add_pic, dicts, t_title=t_title, product=product, images=images, pro_categ=pro_categ)
-        doc.createPath(report_name)
-    except KeyError as e:
-        messagebox.showinfo("No results for the selected period", e)
-    except Exception as e:
-        messagebox.showinfo("Error", e)
+    payment_dict.append(total_dep_dict)
+    t_title = ['Products', 'Customer Deposits', 'Payments']
+    add_pic = [True, False, False]
+    dicts = [variants_dict, payment_dict, pay_dict]
+    doc.createDoc(add_pic, dicts, t_title=t_title, product=product, images=images, pro_categ=pro_categ)
+    doc.createPath(report_name)
+    #except KeyError as e:
+    #messagebox.showinfo("No results for the selected period", e)
+    #except Exception as e:
+    #messagebox.showinfo("Error", e)
     return
 
 def select_all(lb, list):
@@ -120,23 +122,23 @@ def select_all(lb, list):
     else:
         lb.select_set(0, tk.END)
 
-def get_quants(lb):
+def get_quants(comp, lb):
     titles=[]
     categs=[]
     add_pic=[]
     dicts=[]
     for i in lb.curselection():
         categs.append(lb.get(i))
-    invt_list = rp.Doc()
     try:
-        shop_list, title, pic = invt_list.getUpdatedQuant(location='shop', categs=categs)
+        shop_list, title, pic = tf.getUpdatedQuant(comp, location='shop', categs=categs)
         dicts.extend(shop_list)
         titles.extend(title)
         add_pic.extend(pic)
+        invt_list = rp.Doc()
     except:
         shop_list = None
     try:
-        wh_list, title, pic = invt_list.getUpdatedQuant(location='warehouse', categs=categs)
+        wh_list, title, pic = tf.getUpdatedQuant(comp, location='warehouse', categs=categs)
         dicts.extend(wh_list)
         titles.extend(title)
         add_pic.extend(pic)
@@ -188,7 +190,7 @@ def main():
     notebook.add(invt_frame, text='Inventory')
 
     try:
-        start_yr, start_month, start_day, start_hour, start_min, start_sec, end_yr, end_month, end_day, end_hour, end_min, end_sec, items = rp.get_time()
+        start_yr, start_month, start_day, start_hour, start_min, start_sec, end_yr, end_month, end_day, end_hour, end_min, end_sec, items, comp = tf.get_time()
     except:
         messagebox.showinfo('Info', 'Check Connection')
         sys.exit(0)
@@ -207,7 +209,7 @@ def main():
     end_sec_entry = end_v.time_range(end_sec, from_=0, to=60, col=6, row=1)
 
     sales_buttn = View(repo_frame, f_size=9)
-    sales_buttn.add_button(func=lambda: sales_report(start_cal, start_hr_entry, start_min_entry, start_sec_entry, end_cal, end_hr_entry, end_min_entry, end_sec_entry), row=6, col=5, colspan=3, padx=10)
+    sales_buttn.add_button(func=lambda: sales_report(start_cal, start_hr_entry, start_min_entry, start_sec_entry, end_cal, end_hr_entry, end_min_entry, end_sec_entry, comp), row=6, col=5, colspan=3, padx=10)
 
     categs = tk.Variable(value=items)
     categ_listbox = tk.Listbox(invt_frame, listvariable=categs, height=4, width=80, selectmode=tk.MULTIPLE, font=('Constantia', 10))
@@ -217,10 +219,9 @@ def main():
     scrollbar.config(command=categ_listbox.yview)
     categ_listbox.config(yscrollcommand=scrollbar.set)
     
-
     invt_buttn = View(invt_frame, f_size=9)
     invt_buttn.add_button(func=lambda: select_all(categ_listbox, items), text='All/None', row=7, col=0, padx=10)
-    invt_buttn.add_button(func=lambda: get_quants(categ_listbox), text= 'Print', row=7, col=2, padx=10)
+    invt_buttn.add_button(func=lambda: get_quants(comp, categ_listbox), text= 'Print', row=7, col=2, padx=10)
 
     root.mainloop()
     return root, start_cal, start_hr_entry, start_min_entry, start_sec_entry, end_cal, end_hr_entry, end_min_entry, end_sec_entry
