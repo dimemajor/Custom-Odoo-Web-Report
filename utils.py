@@ -75,4 +75,3 @@ def rm_other_fields(pro):
                 return pro
 
 
-        

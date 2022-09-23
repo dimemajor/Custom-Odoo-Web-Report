@@ -6,6 +6,7 @@ from tkcalendar import DateEntry
 from ttkthemes import ThemedTk
 from tkinter import messagebox
 import datetime as dt
+import sys
 
 import odoodata.odoodoc as rp
 
@@ -41,7 +42,7 @@ class View():
     def add_button(self, func, row, col, colspan=1, padx=5, pady=5, text='Print'):
         ttk.Button(self.window, text=text, command=func, style=self.style).grid(row=row, column=col, columnspan=colspan, padx=padx, pady=pady)
         return
-        
+
 
 def sales_report(start_cal, start_hr_entry, start_min_entry, start_sec_entry,
                 end_cal, end_hr_entry, end_min_entry, end_sec_entry):
@@ -127,15 +128,20 @@ def get_quants(lb):
     for i in lb.curselection():
         categs.append(lb.get(i))
     invt_list = rp.Doc()
-    shop_list, title, pic = invt_list.getUpdatedQuant(location='shop', categs=categs)
-    dicts.extend(shop_list)
-    titles.extend(title)
-    add_pic.extend(pic)
-    wh_list, title, pic = invt_list.getUpdatedQuant(location='warehouse', categs=categs)
-    dicts.extend(wh_list)
-    titles.extend(title)
-    add_pic.extend(pic)
-
+    try:
+        shop_list, title, pic = invt_list.getUpdatedQuant(location='shop', categs=categs)
+        dicts.extend(shop_list)
+        titles.extend(title)
+        add_pic.extend(pic)
+    except:
+        shop_list = None
+    try:
+        wh_list, title, pic = invt_list.getUpdatedQuant(location='warehouse', categs=categs)
+        dicts.extend(wh_list)
+        titles.extend(title)
+        add_pic.extend(pic)
+    except:
+        wh_list = None
     if shop_list is not None and wh_list is not None:
         invt_list.createDoc(add_pic, dicts, t_title=titles)
     elif wh_list is not None:
@@ -181,8 +187,11 @@ def main():
     notebook.add(repo_frame, text='Sales Report')
     notebook.add(invt_frame, text='Inventory')
 
-    start_yr, start_month, start_day, start_hour, start_min, start_sec, end_yr, end_month, end_day, end_hour, end_min, end_sec = rp.get_time()
-
+    try:
+        start_yr, start_month, start_day, start_hour, start_min, start_sec, end_yr, end_month, end_day, end_hour, end_min, end_sec, items = rp.get_time()
+    except:
+        messagebox.showinfo('Info', 'Check Connection')
+        sys.exit(0)
     start_v = View(repo_frame, start_yr, start_month, start_day)
     end_v = View(repo_frame, end_yr, end_month, end_day)
 
@@ -197,15 +206,17 @@ def main():
     end_min_entry = end_v.time_range(end_min, from_=0, to=60, col=5, row=1)
     end_sec_entry = end_v.time_range(end_sec, from_=0, to=60, col=6, row=1)
 
-    #ttk.Button(repo_frame, text="Print", command=lambda: program(start_cal, start_hr_entry, start_min_entry, start_sec_entry, end_cal, end_hr_entry, end_min_entry, end_sec_entry), style='small.TButton').grid(column=5, row=6, padx=10, columnspan=3)
-    
     sales_buttn = View(repo_frame, f_size=9)
     sales_buttn.add_button(func=lambda: sales_report(start_cal, start_hr_entry, start_min_entry, start_sec_entry, end_cal, end_hr_entry, end_min_entry, end_sec_entry), row=6, col=5, colspan=3, padx=10)
 
-    items = ['NET LACE', 'SEQUENCE LACE', 'BRIDAL LACE']
     categs = tk.Variable(value=items)
-    categ_listbox = tk.Listbox(invt_frame, listvariable=categs, height=4, width=80, selectmode=tk.MULTIPLE, font=('Constantia', 9))
+    categ_listbox = tk.Listbox(invt_frame, listvariable=categs, height=4, width=80, selectmode=tk.MULTIPLE, font=('Constantia', 10))
     categ_listbox.grid(row=0, column=0, rowspan=4, columnspan=4, padx=5, pady=5)
+    scrollbar = tk.Scrollbar(invt_frame)
+    scrollbar.grid(row=0, column=5, rowspan=7)
+    scrollbar.config(command=categ_listbox.yview)
+    categ_listbox.config(yscrollcommand=scrollbar.set)
+    
 
     invt_buttn = View(invt_frame, f_size=9)
     invt_buttn.add_button(func=lambda: select_all(categ_listbox, items), text='All/None', row=7, col=0, padx=10)

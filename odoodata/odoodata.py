@@ -1,4 +1,5 @@
 
+from urllib import response
 import requests
 from bs4 import BeautifulSoup as bs
 
@@ -238,6 +239,40 @@ class Session():
                     'allowed_company_ids': [
                         1,
                     ],
+                    'bin_size': True,
+                },
+            },
+        }
+        response = requests.post(self.searchUrl, cookies=self.cookies, headers=self.headers, json=json_data)
+        return response
+
+    def getCategsList(self):
+        json_data = {
+            'id': 8,
+            'jsonrpc': '2.0',
+            'method': 'call',
+            'params': {
+                'model': 'product.category',
+                'domain': [],
+                'fields': [
+                    'display_name',
+                ],
+                'limit': 80,
+                'sort': '',
+                'context': {
+                    'lang': 'en_US',
+                    'tz': 'Europe/London',
+                    'uid': 2,
+                    'allowed_company_ids': [
+                        1,
+                    ],
+                    'params': {
+                        'menu_id': 176,
+                        'cids': 1,
+                        'action': 147,
+                        'model': 'product.category',
+                        'view_type': 'list',
+                    },
                     'bin_size': True,
                 },
             },

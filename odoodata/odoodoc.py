@@ -1,4 +1,5 @@
 import datetime as dt
+from msilib.schema import Error
 import os
 
 import pandas as pd
@@ -135,7 +136,6 @@ class Doc():
         j=0
         for i in response.json()['result']['records']:
             temp_dict = {}
-            temp_dict['Date'] = i['date_order']
             try:
                 temp_dict['Customer'] = i['partner_id'][1]
             except:
@@ -362,6 +362,7 @@ class Doc():
                     if isinstance(value, int) or isinstance(value, float):
                         value = f'{value:,.2f}'
                     t.cell(i,j).text = value
+                    t.cell(i,j).paragraphs[0].runs[0].font.size = Pt(12)
                     j+=1
                 i+=1
             i=1
@@ -460,7 +461,7 @@ def get_time():
     yesterday = dt.datetime.today()-dt.timedelta(1)
     try:
         comp = od.Session(PASSWORD, EMAIL, DOMAIN)
-        start_yr, start_month, start_day, start_hour, start_min, start_sec = format_pos(comp)
+        start_yr, start_month, start_day, start_hour, start_min, start_sec, comp = format_pos(comp)
     except:
         start_day = int(f'{yesterday:%d}')
         start_month =  int(f'{yesterday:%m}')
@@ -475,24 +476,30 @@ def get_time():
     end_hour = int(f'{today:%H}')
     end_min = int(f'{today:%M}')
     end_sec = int(f'{today:%S}')
-    
-    return start_yr, start_month, start_day, start_hour, start_min, start_sec, end_yr, end_month, end_day, end_hour, end_min, end_sec
+    resp = comp.getCategsList()
+    df = pd.DataFrame(resp.json()['result']['records'])
+    categs = df['display_name'].to_list()
+
+    return start_yr, start_month, start_day, start_hour, start_min, start_sec, end_yr, end_month, end_day, end_hour, end_min, end_sec, categs
 
 def format_pos(comp):
     response = comp.getPosData()
+    if 'error' in response.json():
+        if os.path.exists('session_id.txt'):
+            os.remove('session_id.txt')
+        comp = od.Session(PASSWORD, EMAIL, DOMAIN)
+        response = comp.getPosData()
     time = response.json()['result']['records'][0]['start_at']
     time_split = time.split(' ')
-
     td = time_split[0].split('-')
     start_yr = int(td[0])
     start_month = int(td[1])
     start_day = int(td[2])
-
     tt = time_split[1].split(':')
     hour = int(tt[0])+1
     min = int(tt[1])
     sec = int(tt[2])
-    return start_yr, start_month, start_day, hour, min, sec
+    return start_yr, start_month, start_day, hour, min, sec, comp
 
 
 
