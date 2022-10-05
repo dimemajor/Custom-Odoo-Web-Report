@@ -16,55 +16,46 @@ import odoodata.odoodata as od
 from utils import *
 
 
+def format_datetime(date=None, time=None):
+    if date is None and time is None:
+        start = dt.date.today()
+    elif date is not None:
+        date = date.split('-')
+        date = [int(value) for value in date]
+        if time is not None:
+            time = time.split(':')
+            time = [int(value) for value in time]
+            start = dt.datetime(date[0],date[1],date[2],time[0]+1,time[1],time[0])
+        else:
+            start = dt.date(date[0],date[1],date[2])
+    return start
+
+
 class Doc():
     def __init__(self, start_date=None, end_date=None, 
                 start_time=None, end_time=None, h_font='Alef'
             ):
 
-        cwd = os.getcwd()
-        if '/' in cwd:
-            cwd = cwd.split('/')
-        elif '\\' in cwd:
-            cwd = cwd.split('\\')
-        if ':' in cwd[0]:
-            self.path = f'{cwd[0]}/Users/{cwd[2]}/Documents/'
-            self.path_to_catalog = f'{cwd[0]}/Users/{cwd[2]}/Documents/{CATALOG_FOLDER}/'
-        else:
-            self.path = f'{cwd[0]}/Users/{cwd[2]}/Documents/'
-            self.path_to_catalog = f'Users/{cwd[0]}/Documents/{CATALOG_FOLDER}/'
+        self.path = f'{os.environ["USERPROFILE"]}/Documents/'
+        self.path_to_catalog = f'{os.environ["USERPROFILE"]}/Documents/{CATALOG_FOLDER}/'
 
         self.comp = od.getData(PASSWORD, EMAIL, DOMAIN, start_date, end_date, start_time, end_time)
         self.h_font = h_font
         self.doc = docx.Document()
 
         if start_date is None and end_date is None:
-            self.start = dt.date.today()
+            self.start = format_datetime()
             self.date = f'{self.start:%d %b %y}'
         elif start_date is None and end_date != None:
-            date = end_date.split('-')
-            date = [int(value) for value in date]
-            self.start = dt.date(date[0],date[1],date[2])
+            self.start = format_datetime(date=end_date)
             self.date = f'{self.start:%d %b %y}'
         elif start_date != None and end_date is None:
-            date = start_date.split('-')
-            date = [int(value) for value in date]
-            self.start = dt.date(date[0],date[1],date[2])
-            self.date = f'{date:%d %b %y}'
+            self.start = format_datetime(date=start_date)
+            self.date = f'{self.start:%d %b %y}'
         elif start_date != None and end_date != None:
-            start = start_date.split('-')
-            start = [int(value) for value in start]
-            start_time = start_time.split(':')
-            start_time = [int(value) for value in start_time]
-            self.start = dt.datetime(start[0],start[1],start[2],start_time[0]+1,start_time[1],start_time[0])
-
-            end = end_date.split('-')
-            end = [int(value) for value in end]
-            end = [int(value) for value in end]
-            end_time = end_time.split(':')
-            end_time = [int(value) for value in end_time]
-            self.end = dt.datetime(end[0],end[1],end[2],end_time[0]+1,end_time[1],end_time[2])
-            self.date = f'{self.start:%d %b %y_%I-%M %p} - {self.end:%d %b %y_%I-%M %p}'
-    
+            self.start = format_datetime(date=start_date, time=start_time)
+            end_dt = format_datetime(date=end_date, time=end_time)
+            self.date = f'{self.start:%d %b %y_%I-%M %p} - {end_dt:%d %b %y_%I-%M %p}'
     def docHeader():
         def decorator(func):
             def wrapper(self, add_pic, *args, **kwargs):
@@ -150,11 +141,11 @@ class Doc():
             self.doc.add_heading(t_title[n], 2)
             if add_pic[n] == True:
                 if len(product) > len(table):
-                    raise ValueError('Length of table must be >= product length')
+                    raise ValueError('Length of table must be == product length')
                 if len(images) > len(table):
-                    raise ValueError('Length of table must be >= images length')
+                    raise ValueError('Length of table must be == images length')
                 if len(pro_categ) > len(table):
-                    raise ValueError('Length of table must be >= product category length')
+                    raise ValueError('Length of table must be == product category length')
                 t = self.doc.add_table(len(table)+1, len(table[0].keys())+1)
                 t.cell(0,len(table[0].keys())).text = 'Image'
             else:
@@ -195,9 +186,6 @@ class Doc():
                         paragraph = cell.add_paragraph()
                         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-                        file_path, file_ext = os.path.splitext(img_path)
-                        mac_image = f'file:///Users/morufat/Documents/{CATALOG_FOLDER}/{pro_categ[i-1]}/{product[i-1]}{file_ext}'
-                        add_hyperlink(paragraph, ' photo', mac_image)
                     except:
                         t.cell(i,len(table[0].keys())).text = 'no image'
                     i+=1
