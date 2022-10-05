@@ -25,7 +25,7 @@ The aim of the program is to have the report in this format instead;
 | Bottle (White) | 1 | 600 | 600 | ![gdrive link](https://google.com)
 | Bottle (Red) | 2 pck 1 pce | 700 | 7700 | ![gdrive link](https://google.com)
 
-**The image column is also accompanies a thumbnail of the photo it is linked to.**
+**The image column is also accompanied by a thumbnail of the photo it is linked to.**
 
 ## How it works:
 The program sets to:
