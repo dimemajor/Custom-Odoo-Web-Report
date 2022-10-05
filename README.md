@@ -45,13 +45,13 @@ In the program,
 
 ## Extensibility
 This program is created specifically for a client but is fairly reusable for another potential user. It will however need some changes especially to the "constant.py" file (not included in the repo for its sensitivity) which include the following variables;
-- DOMAIN (eg. https://test.odoo.com)
-- EMAIL (user email)
-- PASSWORD (user password)
-- FOLDER_NAME (name of folder where report files are saved)
-- COMPANY (name of company for customization of pdf)
-- CATALOG_FOLDER (name of folder where pictures are located)
-- SCOPES (g_drive scopes if integrating with google drive)
+- `DOMAIN` (eg. https://test.odoo.com)
+- `EMAIL` (user email)
+- `PASSWORD` (user password)
+- `FOLDER_NAME` (name of folder where report files are saved)
+- `COMPANY` (name of company for customization of pdf)
+- `CATALOG_FOLDER` (name of folder where pictures are located)
+- `SCOPES` (g_drive scopes if integrating with google drive)
 
 
 
