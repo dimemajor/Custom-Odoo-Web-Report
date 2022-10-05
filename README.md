@@ -4,15 +4,17 @@ This script was created to customize sales report from odoo point of sales.
 The default report that comes out from odoo point of sale report is a summarized version of what was sold.
 For example, lets assume you have in stock a bag with 2 variants (colours in this case), say, black and blue. Lets also assume you have a bottle with 2 variants (white and red). If in a day you sold:
 
-2 blue bags at 5000
-3 black bags at 7500
-1 white bottle at 600
-5 red bottles at 3000
+- 2 blue bags at 5000 each
+- 3 black bags at 7500 each
+- 1 white bottle at 600 each
+- 5 red bottles at 700 each
 
 The odoo report comes out as:
-bags 12500
-bottle 3600
-Total 13100
+| Product | Quantity | Price Unit |
+| --- | --- | --- |
+| Bag | 5 | 6250 |
+| Bottle | 4 | 650 |
+
 
 This summariced format is not very useful if you want to be able to see the exact variant that was sold. It would be nice to have a report that does that right? Luckily, odoo allows customized modules where this can be achieved but that comes at a price. A relatively huge price increase for that feature, especially if that is the only customization you need. Which is where this script comes in.
 
