@@ -20,12 +20,15 @@ def convert_to_bundle(qty, uom, categ=None, format='long'):
         else:
             qty = f'{qty} {uom}'
     elif format == 'short':
-        if categ == 'SEGO':
-            qty = segment(1, 'Pc', 'Pc')
-        elif categ == 'ASO OKE':
-            qty = segment(8, 'Pck', 'S')
-        elif uom == 'Yards':
-            qty = segment(15, 'B', 'Y')
+        if qty>=0:
+            if categ == 'SEGO':
+                qty = segment(1, 'Pc', 'Pc')
+            elif categ == 'ASO OKE':
+                qty = segment(8, 'Pck', 'S')
+            elif uom == 'Yards':
+                qty = segment(15, 'B', 'Y')
+            else:
+                qty = f'{qty} {uom}'
         else:
             qty = f'{qty} {uom}'
     return qty

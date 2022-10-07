@@ -182,10 +182,6 @@ class Doc():
                         run.add_break(WD_BREAK.LINE)
                         hyp = get_image_hyperlink(img_path)
                         add_hyperlink(paragraph, 'open', hyp)
-                        
-                        paragraph = cell.add_paragraph()
-                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
                     except:
                         t.cell(i,len(table[0].keys())).text = 'no image'
                     i+=1

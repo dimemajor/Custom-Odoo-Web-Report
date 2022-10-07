@@ -47,68 +47,38 @@ def formatVariants(comp):
     variants_dict = df.to_dict('records')
     return variants_dict, product, images, pro_categ, cost
 
-def formatPayment(comp, method):
-        payment_dict = []
-        cash_amount = []
-        trfs_amount = []
-        pos_amount = []
-        cus_amount = []
-        ids = []
-        dep_increase = []
-        dep_decrease = []
-
+def formatPayment(comp):
         response = comp.getPayments()
-        for i in response.json()['result']['records']:
-            if i['payment_method_id'][1] == 'Cash':
-                cash_amount.append(i['amount'])
-            elif i['payment_method_id'][1] == 'Transfer':
-                trfs_amount.append(i['amount'])
-            elif i['payment_method_id'][1] == 'POS':
-                pos_amount.append(i['amount'])
-            elif i['payment_method_id'][1] == 'Customer Account':
-                ids.append(i['pos_order_id'][0])
-                cus_amount.append(i['amount'])
-        t_cash = sum(cash_amount)
-        t_trfs = sum(trfs_amount)
-        t_pos = sum(pos_amount)
-        t_cus = sum(cus_amount)
+        pay_df = pd.DataFrame(response.json()['result']['records'])
+        to_keep = ('payment_method_id', 'amount', 'pos_order_id')
+        pay_df = rm_headers(pay_df, to_keep)
+        pay_df['payment_method_id'] = pay_df['payment_method_id'].apply(replace)
+        pay_df['pos_order_id'] = pay_df['pos_order_id'].apply(lambda x: replace(x, index=0))
+        pay_df = pay_df.loc[pay_df['payment_method_id'].isin(['Cash', 'Transfer', 'POS', 'Customer Account'])]
+        t_cash = sum(pay_df.loc[pay_df['payment_method_id'] == 'Cash']['amount'].to_list())
+        t_pos = sum(pay_df.loc[pay_df['payment_method_id'] == 'POS']['amount'].to_list())
+        t_trfs = sum(pay_df.loc[pay_df['payment_method_id'] == 'Transfer']['amount'].to_list())
+        t_cus = sum(pay_df.loc[pay_df['payment_method_id'] == 'Customer Account']['amount'].to_list())
         totals = t_cash, t_trfs, t_pos, t_cus
 
         response = comp.getOrders()
-        j=0
-        for i in response.json()['result']['records']:
-            temp_dict = {}
-            try:
-                temp_dict['Customer'] = i['partner_id'][1]
-            except:
-                temp_dict['Customer'] = 'General'
-            try:
-                x = ids.index(i['id'])
-                pay = float(cus_amount[x])
-            except:
-                temp_dict['Amount'] = i['amount_total']
+        order_df = pd.DataFrame(response.json()['result']['records'])
+        to_keep = ('partner_id', 'amount_total', 'id')
+        order_df = rm_headers(order_df, to_keep)
+        order_df = order_df.loc[order_df['partner_id'] != False]
+        order_df['partner_id'] = order_df['partner_id'].apply(replace)
+        order_df.rename(columns={'id':'pos_order_id', 'partner_id': 'Customer'}, inplace=True)
 
-            if method == 'default':
-                if temp_dict['Customer'] != 'General': #because of the type of data, if temp_dict['amount']==None, this line wont run. temp_dict['amount'] is already set
-                    temp_dict['Amount'] = pay
-                    payment_dict.append(temp_dict)
+        df = pd.merge(pay_df, order_df, how='inner', on='pos_order_id')
+        df = df.loc[df['payment_method_id'] == 'Customer Account']
+        df.drop(columns=['amount_total', 'payment_method_id', 'pos_order_id'], inplace=True)
+        df['In'] = df['amount'].apply(lambda x: abs(x) if(x<0) else '')
+        df['Out'] = df['amount'].apply(lambda x: x if(x>=0) else '')
+        df = df[['Customer', 'In', 'Out']]
+        dep_increase = sum([pay if pay != '' else 0 for pay in df['In'].to_list()])
+        dep_decrease = sum([pay if pay != '' else 0 for pay in df['Out'].to_list()])
+        payment_dict = df.to_dict('records')
 
-            elif method == 'custom':
-                if j==0:
-                    bal = 0
-                if temp_dict['Customer'] != 'General':
-                    if pay >= 0:
-                        temp_dict['Out'] = pay
-                        dep_increase.append(pay)
-                        temp_dict['In'] = ''
-                    else:
-                        temp_dict['Out'] = ''
-                        temp_dict['In'] = abs(pay)
-                        dep_decrease.append(abs(pay))
-                    payment_dict.append(temp_dict)
-                    j+=1
-            else:
-                raise ValueError('try "default" or "custom"') 
         return payment_dict, totals, dep_increase, dep_decrease
 
 def variants_expanded(comp):

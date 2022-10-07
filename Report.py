@@ -76,7 +76,7 @@ def sales_report(start_cal, start_hr_entry, start_min_entry, start_sec_entry,
     try:
         doc = rp.Doc(start_date=start_date, end_date=end_date, start_time=start_time, end_time=end_time)
         variants_dict, product, images, pro_categ, cost = tf.formatVariants(comp)
-        payment_dict, totals, dep_increase, dep_decrease = tf.formatPayment(comp, 'custom')
+        payment_dict, totals, dep_increase, dep_decrease = tf.formatPayment(comp)
 
         pay_dict = [
             {
@@ -98,8 +98,8 @@ def sales_report(start_cal, start_hr_entry, start_min_entry, start_sec_entry,
         ]
         total_dep_dict = {
             'Customer' : 'TOTAL',
-            'in': sum(dep_increase),
-            'out': sum(dep_decrease),
+            'In': dep_increase,
+            'Out': dep_decrease,
         }
 
         payment_dict.append(total_dep_dict)
