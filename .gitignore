@@ -1,5 +1,5 @@
 #virtual env
-new_repo
+venv
 
 #build folders and file(s)
 __pycache__/
@@ -12,6 +12,7 @@ constants.py
 cred.py
 session_id.txt
 credentials.json
+token.json
 
 #other file(s)
 test.py

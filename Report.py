@@ -1,4 +1,5 @@
 import ctypes
+from tkinter import font
 import babel.numbers
 import tkinter as tk
 from tkinter import ttk
@@ -15,7 +16,7 @@ import odoodata.odoodata as od
 
 class View():
     def __init__(self, window, yr=None, month=None, day=None, 
-                font='Constantia', f_size=12,
+                font='Constantia', f_size=10,
                 ):
         self.yr = yr
         self.month = month
@@ -122,38 +123,50 @@ def select_all(lb, list):
     else:
         lb.select_set(0, tk.END)
 
-def get_quants(comp, lb):
+def get_quants(comp, lb, chkbox_1, chkbox_2):
     titles=[]
     categs=[]
     add_pic=[]
     dicts=[]
     for i in lb.curselection():
         categs.append(lb.get(i))
-    try:
-        shop_list, title, pic = tf.getUpdatedQuant(comp, location='shop', categs=categs)
-        dicts.extend(shop_list)
-        titles.extend(title)
-        add_pic.extend(pic)
-        invt_list = rp.Doc()
-    except:
-        shop_list = None
-    try:
-        wh_list, title, pic = tf.getUpdatedQuant(comp, location='warehouse', categs=categs)
-        dicts.extend(wh_list)
-        titles.extend(title)
-        add_pic.extend(pic)
-    except:
-        wh_list = None
-    if shop_list is not None and wh_list is not None:
-        invt_list.createDoc(add_pic, dicts, t_title=titles)
-    elif wh_list is not None:
-        invt_list.createDoc(add_pic, wh_list, t_title=titles)
-    elif shop_list is not None:
-        invt_list.createDoc(add_pic, shop_list, t_title=titles)
+
+    if len(categs)>0 and ((chkbox_1.get() or chkbox_2.get()) == True):
+        if chkbox_1.get():
+            try:
+                shop_list, title, pic = tf.getUpdatedQuant(comp, location='shop', categs=categs)
+                dicts.extend(shop_list)
+                titles.extend(title)
+                add_pic.extend(pic)
+                invt_list = rp.Doc()
+            except:
+                shop_list = None
+        else:
+            shop_list = None
+        if chkbox_2.get():
+            try:
+                wh_list, title, pic = tf.getUpdatedQuant(comp, location='warehouse', categs=categs)
+                dicts.extend(wh_list)
+                titles.extend(title)
+                add_pic.extend(pic)
+                invt_list = rp.Doc()
+            except:
+                wh_list = None
+        else:
+            wh_list = None
+        if shop_list is not None and wh_list is not None:
+            invt_list.createDoc(add_pic, dicts, t_title=titles)
+        elif wh_list is not None:
+            invt_list.createDoc(add_pic, wh_list, t_title=titles)
+        elif shop_list is not None:
+            invt_list.createDoc(add_pic, shop_list, t_title=titles)
+        else:
+            invt_list = None
+            messagebox.showinfo('Info', 'Nothing at the selected warehouse')
+        if invt_list is not None:
+            invt_list.createPath(report_name = f'Inventory List')
     else:
-        messagebox.showinfo('Info', 'No results to display')
-    
-    invt_list.createPath(report_name = f'Inventory List')
+        messagebox.showinfo('Info', 'Select at least one category and location')
 
 def main():
     ctypes.windll.shcore.SetProcessDpiAwareness(1)
@@ -166,7 +179,7 @@ def main():
 
     root.title('Sales Report')
     w = 650
-    h = 185
+    h = 210
 
     ws = root.winfo_screenwidth()
     hs = root.winfo_screenheight()
@@ -181,10 +194,13 @@ def main():
 
     repo_frame = ttk.Frame(notebook, width=w, height=h)
     invt_frame = ttk.Frame(notebook, width=w, height=h)
+    invt_list_frame = ttk.Frame(invt_frame)
+
     repo_frame.pack(fill='both', expand=True)
     invt_frame.pack(fill='both', expand=True)
     repo_frame.columnconfigure(1, weight=1)
     invt_frame.columnconfigure(1, weight=1)
+    invt_list_frame.grid(row=2, column=0, rowspan=4, columnspan=4, pady=5)
 
     notebook.add(repo_frame, text='Sales Report')
     notebook.add(invt_frame, text='Inventory')
@@ -197,7 +213,7 @@ def main():
     start_v = View(repo_frame, start_yr, start_month, start_day)
     end_v = View(repo_frame, end_yr, end_month, end_day)
 
-    start_cal = start_v.date_range('From: ', label_row=0, label_column=0, entry_row=0, entry_column=1, pady=7)
+    start_cal = start_v.date_range('From: ', label_row=0, label_column=0, entry_row=0, entry_column=1, pady=20)
     end_cal = end_v.date_range('to: ', label_row=1, label_column=0, entry_row=1, entry_column=1, pady=3)
 
     start_hr_entry = start_v.time_range(start_hour, from_=0, to=23, col=4, row=0)
@@ -212,16 +228,23 @@ def main():
     sales_buttn.add_button(func=lambda: sales_report(start_cal, start_hr_entry, start_min_entry, start_sec_entry, end_cal, end_hr_entry, end_min_entry, end_sec_entry, comp), row=6, col=5, colspan=3, padx=10)
 
     categs = tk.Variable(value=items)
-    categ_listbox = tk.Listbox(invt_frame, listvariable=categs, height=4, width=80, selectmode=tk.MULTIPLE, font=('Constantia', 10))
-    categ_listbox.grid(row=0, column=0, rowspan=4, columnspan=4, padx=5, pady=5)
-    scrollbar = tk.Scrollbar(invt_frame)
-    scrollbar.grid(row=0, column=5, rowspan=7)
+    categ_listbox = tk.Listbox(invt_list_frame, listvariable=categs, height=5, width=75, selectmode=tk.MULTIPLE, font=('Constantia', 9))
+    categ_listbox.pack(expand=1, fill="both", side="left")
+
+    scrollbar = tk.Scrollbar(invt_list_frame)
+    scrollbar.pack(side=tk.RIGHT, fill='both')
     scrollbar.config(command=categ_listbox.yview)
     categ_listbox.config(yscrollcommand=scrollbar.set)
-    
-    invt_buttn = View(invt_frame, f_size=9)
-    invt_buttn.add_button(func=lambda: select_all(categ_listbox, items), text='All/None', row=7, col=0, padx=10)
-    invt_buttn.add_button(func=lambda: get_quants(comp, categ_listbox), text= 'Print', row=7, col=2, padx=10)
+
+    sp_val = tk.BooleanVar()
+    wh_val = tk.BooleanVar()
+    style = ttk.Style().configure('my.TCheckbutton', font=('Constantia', 6))
+    ttk.Checkbutton(invt_frame, text='SP', onvalue=True, offvalue=False, variable=sp_val, style='my.TCheckbutton').grid(row=0, column=2, columnspan=3, sticky='w')
+    ttk.Checkbutton(invt_frame, text='WH', onvalue=True, offvalue=False, variable=wh_val, style='my.TCheckbutton').grid(row=0, column=1, columnspan=3, sticky='e')
+
+    invt_buttn = View(invt_frame, f_size=7)
+    invt_buttn.add_button(func=lambda: select_all(categ_listbox, items), text='All/None', row=8, col=0, padx=5)
+    invt_buttn.add_button(func=lambda: get_quants(comp, categ_listbox, sp_val, wh_val), text= 'Print', row=8, col=3, padx=5)
 
     root.mainloop()
     return root, start_cal, start_hr_entry, start_min_entry, start_sec_entry, end_cal, end_hr_entry, end_min_entry, end_sec_entry

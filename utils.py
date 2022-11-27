@@ -2,6 +2,8 @@ def convert_to_bundle(qty, uom, categ=None, format='long'):
     def segment(per_bundle, pack_name, unit_name):
         bundle = int(qty//per_bundle)
         rem_yards = qty%per_bundle
+        if int(rem_yards) == rem_yards:
+            rem_yards = int(rem_yards)
         if rem_yards != 0 and bundle != 0 and per_bundle != 1:
             formatted_qty = f'{bundle} {pack_name} - {rem_yards} {unit_name}'
         elif bundle == 0.0:

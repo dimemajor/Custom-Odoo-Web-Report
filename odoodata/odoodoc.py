@@ -1,5 +1,6 @@
 import datetime as dt
 import os
+from pprint import pprint
 
 import pandas as pd
 import glob
@@ -14,6 +15,8 @@ from docx.shared import Inches
 from constants import *
 import odoodata.odoodata as od
 from utils import *
+import gdrive_data.auth as auth
+import gdrive_data.main as main
 
 
 def format_datetime(date=None, time=None):
@@ -131,7 +134,18 @@ class Doc():
                     else:
                         return img_path
             return images[0]
-
+        try:    
+            os.chdir('gdrive_data\\')
+            categs = set()
+            [categs.add(i) for i in pro_categ]
+            aut = auth.auth(SCOPES)
+            creds = aut.getCred()
+            service = main.build('drive', 'v3', credentials=creds)
+            drive_pics = main.search_file(service, categs)
+            os.chdir('..')
+        except:
+            drive_pics = None
+        
         if len(dicts) != len(t_title):
             raise ValueError('Length of table and table title must match')
         if len(dicts) != len(add_pic):
@@ -180,8 +194,16 @@ class Doc():
                         img_path = find_image(images[i-1], product[i-1], pro_categ[i-1])
                         run.add_picture(img_path, width = Inches(.7), height = Inches(.8))
                         run.add_break(WD_BREAK.LINE)
-                        hyp = get_image_hyperlink(img_path)
-                        add_hyperlink(paragraph, 'open', hyp)
+                        if drive_pics is not None:
+                            try:
+                                link = drive_pics[pro_categ[i-1]][product[i-1]]
+                            except KeyError:
+                                link = drive_pics[pro_categ[i-1]][images[i-1]]
+                            except:
+                                link = get_image_hyperlink(img_path)
+                        else:
+                            link = get_image_hyperlink(img_path)
+                        add_hyperlink(paragraph, 'open', link)
                     except:
                         t.cell(i,len(table[0].keys())).text = 'no image'
                     i+=1
