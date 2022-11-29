@@ -36,6 +36,7 @@ class Session():
         try:
             self.session_id = self.loadSessionId()
         except:
+            print('new_id')
             self.session_id = self.getSessionId()
         self.cookies = {
             '_ga': 'GA1.2.1463518167.1654244215',
@@ -280,6 +281,107 @@ class Session():
         response = requests.post(self.searchUrl, cookies=self.cookies, headers=self.headers, json=json_data)
         return response
 
+    def productMoves(self):
+        json_data = {
+            'id': 187,
+            'jsonrpc': '2.0',
+            'method': 'call',
+            'params': {
+                'model': 'stock.move.line',
+                'domain': [
+                    [
+                        'state',
+                        '=',
+                        'done',
+                    ],
+                ],
+                'fields': [
+                    'date',
+                    'reference',
+                    'product_id',
+                    'lot_id',
+                    'location_id',
+                    'location_dest_id',
+                    'qty_done',
+                    'product_uom_id',
+                    'company_id',
+                    'state',
+                    #'product_category_name', 
+                ],
+                'limit': 100000,
+                'sort': 'date ASC',
+                'context': {
+                    'lang': 'en_US',
+                    'tz': 'Europe/London',
+                    'uid': 2,
+                    'allowed_company_ids': [
+                        1,
+                    ],
+                    'params': {
+                        'cids': 1,
+                        'menu_id': 176,
+                        'action': 331,
+                        'model': 'stock.move.line',
+                        'view_type': 'list',
+                    },
+                    'search_default_filter_last_12_months': 0,
+                    'search_default_done': 1,
+                    'search_default_groupby_product_id': 0,
+                    'create': 0,
+                    'bin_size': True,
+                },
+            },
+        }
+        response = requests.post(self.searchUrl, cookies=self.cookies, headers=self.headers, json=json_data)
+        return response
+
+    def getProducts(self):
+        json_data = {
+            'id': 771,
+            'jsonrpc': '2.0',
+            'method': 'call',
+            'params': {
+                'model': 'product.template',
+                'domain': [
+                    [
+                        'type',
+                        'in',
+                        [
+                            'consu',
+                            'product',
+                        ],
+                    ],
+                ],
+                'fields': [
+                    'id',
+                    'product_variant_count',
+                    'name',
+                    'priority',
+                    'default_code',
+                    'list_price',
+                    'qty_available',
+                    'uom_id',
+                    'type',
+                    'product_variant_ids',
+                ],
+                'limit': 100000,
+                'sort': '',
+                'context': {
+                    'lang': 'en_US',
+                    'tz': 'Europe/London',
+                    'uid': 2,
+                    'allowed_company_ids': [
+                        1,
+                    ],
+                    'search_default_consumable': 1,
+                    'default_detailed_type': 'product',
+                    'bin_size': True,
+                },
+            },
+        }
+        response = requests.post(self.searchUrl, cookies=self.cookies, headers=self.headers, json=json_data)
+        return response
+
 class getData(Session):
     def __init__(self, password, email, domain, start_date, end_date, start_time, end_time):
         self.start_date = start_date
@@ -500,6 +602,9 @@ class getData(Session):
 
         response = requests.post(self.searchUrl, cookies=self.cookies, headers=self.headers, json=json_data)
         return response
+
+
+
             
 
     

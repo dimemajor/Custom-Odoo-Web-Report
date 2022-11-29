@@ -1,7 +1,7 @@
 def convert_to_bundle(qty, uom, categ=None, format='long'):
     def segment(per_bundle, pack_name, unit_name):
         bundle = int(qty//per_bundle)
-        rem_yards = qty%per_bundle
+        rem_yards = round(qty%per_bundle, 2)
         if int(rem_yards) == rem_yards:
             rem_yards = int(rem_yards)
         if rem_yards != 0 and bundle != 0 and per_bundle != 1:
@@ -22,17 +22,21 @@ def convert_to_bundle(qty, uom, categ=None, format='long'):
         else:
             qty = f'{qty} {uom}'
     elif format == 'short':
-        if qty>=0:
-            if categ == 'SEGO':
-                qty = segment(1, 'Pc', 'Pc')
-            elif categ == 'ASO OKE':
-                qty = segment(8, 'Pck', 'S')
-            elif uom == 'Yards':
-                qty = segment(15, 'B', 'Y')
+        try:
+            qty = float(qty)
+            if qty>=0:
+                if categ == 'SEGO':
+                    qty = segment(1, 'Pc', 'Pc')
+                elif categ == 'ASO OKE':
+                    qty = segment(8, 'Pck', 'S')
+                elif uom == 'Yards':
+                    qty = segment(15, 'B', 'Y')
+                else:
+                    qty = f'{qty} {uom}'
             else:
-                qty = f'{qty} {uom}'
-        else:
-            qty = f'{qty} {uom}'
+                qty = f'{round(qty, 2)} {uom}'
+        except:
+            return qty
     return qty
 
 def apply_conversion(dict_list, qty_key='Qty', categ_key='Category', uom_key='uom'):

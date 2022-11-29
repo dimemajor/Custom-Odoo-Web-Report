@@ -139,10 +139,10 @@ class Doc():
             categs = set()
             [categs.add(i) for i in pro_categ]
             aut = auth.auth(SCOPES)
+            os.chdir('..')
             creds = aut.getCred()
             service = main.build('drive', 'v3', credentials=creds)
             drive_pics = main.search_file(service, categs)
-            os.chdir('..')
         except:
             drive_pics = None
         

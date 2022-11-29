@@ -48,70 +48,70 @@ def formatVariants(comp):
     return variants_dict, product, images, pro_categ, cost
 
 def formatPayment(comp):
-        response = comp.getPayments()
-        pay_df = pd.DataFrame(response.json()['result']['records'])
-        to_keep = ('payment_method_id', 'amount', 'pos_order_id')
-        pay_df = rm_headers(pay_df, to_keep)
-        pay_df['payment_method_id'] = pay_df['payment_method_id'].apply(replace)
-        pay_df['pos_order_id'] = pay_df['pos_order_id'].apply(lambda x: replace(x, index=0))
-        pay_df = pay_df.loc[pay_df['payment_method_id'].isin(['Cash', 'Transfer', 'POS', 'Customer Account'])]
-        t_cash = sum(pay_df.loc[pay_df['payment_method_id'] == 'Cash']['amount'].to_list())
-        t_pos = sum(pay_df.loc[pay_df['payment_method_id'] == 'POS']['amount'].to_list())
-        t_trfs = sum(pay_df.loc[pay_df['payment_method_id'] == 'Transfer']['amount'].to_list())
-        t_cus = sum(pay_df.loc[pay_df['payment_method_id'] == 'Customer Account']['amount'].to_list())
-        totals = t_cash, t_trfs, t_pos, t_cus
+    response = comp.getPayments()
+    pay_df = pd.DataFrame(response.json()['result']['records'])
+    to_keep = ('payment_method_id', 'amount', 'pos_order_id')
+    pay_df = rm_headers(pay_df, to_keep)
+    pay_df['payment_method_id'] = pay_df['payment_method_id'].apply(replace)
+    pay_df['pos_order_id'] = pay_df['pos_order_id'].apply(lambda x: replace(x, index=0))
+    pay_df = pay_df.loc[pay_df['payment_method_id'].isin(['Cash', 'Transfer', 'POS', 'Customer Account'])]
+    t_cash = sum(pay_df.loc[pay_df['payment_method_id'] == 'Cash']['amount'].to_list())
+    t_pos = sum(pay_df.loc[pay_df['payment_method_id'] == 'POS']['amount'].to_list())
+    t_trfs = sum(pay_df.loc[pay_df['payment_method_id'] == 'Transfer']['amount'].to_list())
+    t_cus = sum(pay_df.loc[pay_df['payment_method_id'] == 'Customer Account']['amount'].to_list())
+    totals = t_cash, t_trfs, t_pos, t_cus
 
-        response = comp.getOrders()
-        order_df = pd.DataFrame(response.json()['result']['records'])
-        to_keep = ('partner_id', 'amount_total', 'id')
-        order_df = rm_headers(order_df, to_keep)
-        order_df = order_df.loc[order_df['partner_id'] != False]
-        order_df['partner_id'] = order_df['partner_id'].apply(replace)
-        order_df.rename(columns={'id':'pos_order_id', 'partner_id': 'Customer'}, inplace=True)
+    response = comp.getOrders()
+    order_df = pd.DataFrame(response.json()['result']['records'])
+    to_keep = ('partner_id', 'amount_total', 'id')
+    order_df = rm_headers(order_df, to_keep)
+    order_df = order_df.loc[order_df['partner_id'] != False]
+    order_df['partner_id'] = order_df['partner_id'].apply(replace)
+    order_df.rename(columns={'id':'pos_order_id', 'partner_id': 'Customer'}, inplace=True)
 
-        df = pd.merge(pay_df, order_df, how='inner', on='pos_order_id')
-        df = df.loc[df['payment_method_id'] == 'Customer Account']
-        df.drop(columns=['amount_total', 'payment_method_id', 'pos_order_id'], inplace=True)
-        df['In'] = df['amount'].apply(lambda x: abs(x) if(x<0) else '')
-        df['Out'] = df['amount'].apply(lambda x: x if(x>=0) else '')
-        df = df[['Customer', 'In', 'Out']]
-        dep_increase = sum([pay if pay != '' else 0 for pay in df['In'].to_list()])
-        dep_decrease = sum([pay if pay != '' else 0 for pay in df['Out'].to_list()])
-        payment_dict = df.to_dict('records')
+    df = pd.merge(pay_df, order_df, how='inner', on='pos_order_id')
+    df = df.loc[df['payment_method_id'] == 'Customer Account']
+    df.drop(columns=['amount_total', 'payment_method_id', 'pos_order_id'], inplace=True)
+    df['In'] = df['amount'].apply(lambda x: abs(x) if(x<0) else '')
+    df['Out'] = df['amount'].apply(lambda x: x if(x>=0) else '')
+    df = df[['Customer', 'In', 'Out']]
+    dep_increase = sum([pay if pay != '' else 0 for pay in df['In'].to_list()])
+    dep_decrease = sum([pay if pay != '' else 0 for pay in df['Out'].to_list()])
+    payment_dict = df.to_dict('records')
 
-        return payment_dict, totals, dep_increase, dep_decrease
+    return payment_dict, totals, dep_increase, dep_decrease
 
 def variants_expanded(comp):
-        response = comp.getVariants()
-        tem_df = pd.DataFrame(response.json()['result']['records'])
-        to_keep = ['categ_id', 'name', 'uom_id', 'product_template_variant_value_ids']
-        tem_df = rm_headers(df=tem_df, to_keep=to_keep)
-        tem_df['categ_id'] = tem_df['categ_id'].apply(replace)
-        tem_df['uom_id'] = tem_df['uom_id'].apply(replace)
-        tem_df['product_template_variant_value_ids'] = tem_df['product_template_variant_value_ids'].apply((lambda x: replace(cell=x, index=0)))
-        template_ids = tem_df['product_template_variant_value_ids'].to_list()
-        template_ids = [x for x in template_ids if str(x) != 'nan']
-        
-        response = comp.attachVariants(template_ids)
-        col_df = pd.DataFrame(response.json()['result'])
-        col_df['display_name'] = col_df['display_name'].apply(lambda x: x.replace('COLOUR: ', ''))
-        col_df.rename(columns={'id': 'product_template_variant_value_ids'}, inplace=True)
-        df = pd.merge(tem_df, col_df, on=['product_template_variant_value_ids'], how='left')
-        df['display_name'].fillna('', inplace=True)
-        df['name'] = df['name'] + ' ' + '(' + df['display_name'] + ')'
-        df['name'] = df['name'].apply(lambda x: str(x).replace(" ()", ""))
-        df.rename(columns={'name': 'product', 'categ_id': 'Category', 'uom_id': 'uom'}, inplace=True)
-        to_keep = ['product', 'Category', 'uom']
-        df = rm_headers(df=df, to_keep=to_keep)
+    response = comp.getVariants()
+    tem_df = pd.DataFrame(response.json()['result']['records'])
+    to_keep = ['categ_id', 'name', 'uom_id', 'product_template_variant_value_ids']
+    tem_df = rm_headers(df=tem_df, to_keep=to_keep)
+    tem_df['categ_id'] = tem_df['categ_id'].apply(replace)
+    tem_df['uom_id'] = tem_df['uom_id'].apply(replace)
+    tem_df['product_template_variant_value_ids'] = tem_df['product_template_variant_value_ids'].apply((lambda x: replace(cell=x, index=0)))
+    template_ids = tem_df['product_template_variant_value_ids'].to_list()
+    template_ids = [x for x in template_ids if str(x) != 'nan']
+    
+    response = comp.attachVariants(template_ids)
+    col_df = pd.DataFrame(response.json()['result'])
+    col_df['display_name'] = col_df['display_name'].apply(lambda x: x.replace('COLOUR: ', ''))
+    col_df.rename(columns={'id': 'product_template_variant_value_ids'}, inplace=True)
+    df = pd.merge(tem_df, col_df, on=['product_template_variant_value_ids'], how='left')
+    df['display_name'].fillna('', inplace=True)
 
-        return df
+    df['name'] = df['name'] + ' ' + '(' + df['display_name'] + ')'
+    df['name'] = df['name'].apply(lambda x: str(x).replace(" ()", ""))
+    df.rename(columns={'name': 'product', 'categ_id': 'Category', 'uom_id': 'uom'}, inplace=True)
+    to_keep = ['product', 'Category', 'uom']
+    df = rm_headers(df=df, to_keep=to_keep)
+    return df
 
 def getUpdatedQuant(comp, location, categs=None):
         def create_final_df(q_df):
             q_df.rename(columns= {'quantity': 'product_qty', 'Category_x': 'product_categ_id', 'product': 'Product', 'uom_x': 'uom'}, inplace=True)   
             q_df['Quantity'] = q_df.apply(pd_apply_conversion, axis=1)
             q_df.sort_values(by=['Product'], inplace = True)
-            q_df.rename(columns= {'product_categ_id': 'Category'}, inplace=True)   
+            q_df.rename(columns= {'product_categ_id': 'Category'}, inplace=True)
             to_keep = ['Product', 'Category', 'Quantity']
             q_df = rm_headers(df=q_df, to_keep=to_keep)
             return q_df
@@ -184,19 +184,23 @@ def get_time():
     end_hour = int(f'{today:%H}')
     end_min = int(f'{today:%M}')
     end_sec = int(f'{today:%S}')
+
+    # extra data for default display
     resp = comp.getCategsList()
     df = pd.DataFrame(resp.json()['result']['records'])
     categs = df['display_name'].to_list()
+    products = fetch_product_data(comp)
 
-    return start_yr, start_month, start_day, start_hour, start_min, start_sec, end_yr, end_month, end_day, end_hour, end_min, end_sec, categs, comp
+    return start_yr, start_month, start_day, start_hour, start_min, start_sec, end_yr, end_month, end_day, end_hour, end_min, end_sec, categs, products, comp
 
 def format_pos(comp):
     response = comp.getPosData()
-    if 'error' in response.json():
+    if 'error' in response.json(): #session used expired or the file was tampered with
         if os.path.exists('session_id.txt'):
             os.remove('session_id.txt')
-        comp = od.Session(PASSWORD, EMAIL, DOMAIN)
+        comp = od.Session(PASSWORD, EMAIL, DOMAIN) # another instance to get another session_id
         response = comp.getPosData()
+
     time = response.json()['result']['records'][0]['start_at']
     time_split = time.split(' ')
     td = time_split[0].split('-')
@@ -207,4 +211,83 @@ def format_pos(comp):
     hour = int(tt[0])+1
     min = int(tt[1])
     sec = int(tt[2])
+
     return start_yr, start_month, start_day, hour, min, sec, comp
+
+def stock_moves(comp, product, location, start_time, end_time, prod_df):
+    response = comp.getQuants()
+    quant_df = pd.DataFrame(response.json()['result']['records'])
+    quant_df['product_id'] = quant_df['product_id'].apply(replace)
+    quant_df['product_categ_id'] = quant_df['product_categ_id'].apply(replace)
+    quant_df['location_id'] = quant_df['location_id'].apply(replace)
+    quant_df['product_uom_id'] = quant_df['product_uom_id'].apply(replace)
+    to_keep = ['product_id', 'product_categ_id', 'location_id', 'product_uom_id', 'quantity']
+    quant_df = rm_headers(df=quant_df, to_keep=to_keep)
+    quant_df2 = quant_df.loc[(quant_df['product_id'] == product) & (quant_df['location_id'] == location)]
+    try:
+        qty = quant_df2.iloc[0]['quantity']
+        categ = quant_df2.iloc[0]['product_categ_id']
+        uom = quant_df2.iloc[0]['product_uom_id']
+    except IndexError:
+        qty = 0
+
+    response = comp.productMoves()
+    moves_df = pd.DataFrame(response.json()['result']['records'])
+    moves_df['product_id'] = moves_df['product_id'].apply(replace)
+    moves_df['location_dest_id'] = moves_df['location_dest_id'].apply(replace)
+    moves_df['location_id'] = moves_df['location_id'].apply(replace)
+    moves_df = moves_df.loc[(moves_df['product_id'] == product) & ((moves_df['location_id'] == location) | (moves_df['location_dest_id'] == location))]
+    sub_moves_df = moves_df[['location_dest_id', 'qty_done']]
+    qtys = sub_moves_df.to_dict('records')
+    qtys = qtys[::-1]
+    bal=[]
+    bal.append(qty)
+    for i, num in enumerate(qtys):
+        if i != len(qtys)-1:
+            if num['location_dest_id'] == location:
+                new_bal = qty-num['qty_done']
+            else:
+                new_bal = qty+num['qty_done']
+            bal.append(new_bal)
+            qty = new_bal
+
+    moves_df['in'] = moves_df.apply(lambda x: x['qty_done'] if x['location_dest_id'] == location else 0, axis=1)
+    moves_df['out'] = moves_df.apply(lambda x: x['qty_done'] if x['location_id'] == location else 0, axis=1)
+    moves_df['balance'] = bal[::-1]
+    moves_df = moves_df[(moves_df['date'] > start_time) & (moves_df['date'] < end_time)]
+    moves_df['in'].replace(to_replace=0.00, value='--', inplace=True)
+    moves_df['out'].replace(to_replace=0.00, value='--', inplace=True)
+
+    '''
+    # converting to bundles
+    moves_df['product_categ_id'] = categ
+    moves_df['uom'] = uom
+    moves_df['product_qty'] = moves_df['balance']
+    moves_df['balance'] = moves_df.apply(pd_apply_conversion, axis=1)
+    moves_df['product_qty'] = moves_df['in']
+    moves_df['in'] = moves_df.apply(pd_apply_conversion, axis=1)
+    moves_df['product_qty'] = moves_df['out']
+    moves_df['out'] = moves_df.apply(pd_apply_conversion, axis=1)
+    '''
+
+    to_keep = ['date', 'reference', 'in', 'out', 'balance']
+    moves_df = rm_headers(moves_df, to_keep)
+    moves_df.rename(columns={
+            'date':'Date',
+            'reference':'Ref',
+            'in':'In',
+            'out':'Out',
+            'balance':'Balance', 
+        }, inplace=True)
+    if moves_df.shape[0] == 0:
+        return None
+    else:
+        dicts = moves_df.to_dict('records')
+        return dicts
+
+def fetch_product_data(comp):
+    return variants_expanded(comp)
+
+
+    
+
